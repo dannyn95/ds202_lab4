@@ -9,13 +9,10 @@ output: html_document
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-
-#original code kept resulting in Error: `path` does not exist: 'cyclonesFootball2018.xlsx'
-#altered code to follow path in order to run successfully.
 library(readxl)
-defense <- read_excel("C:/Users/Danny Nguyen/ds202_lab4/cyclonesFootball2018.xlsx", sheet='Defensive')
-offense <- read_excel("C:/Users/Danny Nguyen/ds202_lab4/cyclonesFootball2018.xlsx", sheet='Offensive')
-biography <- read_excel("C:/Users/Danny Nguyen/ds202_lab4/cyclonesFootball2018.xlsx", sheet='Biography')
+defense <- read_excel("cyclonesFootball2018.xlsx", sheet='Defensive')
+offense <- read_excel("cyclonesFootball2018.xlsx", sheet='Offensive')
+biography <- read_excel("cyclonesFootball2018.xlsx", sheet='Biography')
 ```
 
 ```{r}
@@ -65,8 +62,46 @@ print(offClean)
 print(bioClean)
 ```
 
+#Part 2
+
+#Problem 1-2
+
+Everything looks rare relative to Tackles_ASST and Tackles_Solo. Pass_QBH, Pass_PF, Tackles_Sack, and Tackles_TFL max out at three and all look pretty rare. The rarest three are the Turnover_FF, Turnover_FR, and Turnover_INT. Those three only have players getting one per game if any.
+
 ```{r}
-#Part Two: Tidying data (1)
-#Question 1: Reformat the defClean data frame into a tidy format using gather. The type of statistic (Tackles_Solo, Tackles_ASST, etc) is added as a new key column named Statistic.
-defClean <- defClean %>% gather(key = Statistic, value = Count, 3:11) %>% str
+defTid <- defClean %>% gather(key=Statistic, value=Count, 3:11)
+
+ggplot(defTid, aes(x=Count)) + geom_histogram(binwidth=1) + facet_wrap(~Statistic) + scale_x_continuous(breaks=seq(0,10,1)) + labs(title="Defensive Statistic Counts", x="Player Max", y="Count")
 ```
+
+#Problem 3
+
+Based off this scatterplot it appears that the Iowa State players did better tackle-wise against West Virgina. Too many players got no tackles against Kansas State for this to be much of a competition
+
+```{r}
+wvks <- defClean %>% filter(Opponent_Opponent=="West Virginia" | Opponent_Opponent=="Kansas State") %>% select(Name, Opponent_Opponent, Tackles_Solo) %>% spread(Opponent_Opponent, Tackles_Solo) %>% mutate_all(funs(replace(., is.na(.), 0)))
+
+print(tbl_df(wvks), n=500)
+
+ggplot(wvks, aes(x=`West Virginia`, y=`Kansas State`)) + geom_point() + scale_y_continuous(breaks=seq(0,9,1)) + labs(title="Player Tackle Counts Against Kansas State and West Virginia", x="West Virginia", y="Kansas State")
+```
+
+#Part 2 of Part 2
+
+```{r}
+bioSep <- bioClean %>% separate(Hometown, c("Town", "State"), sep=",") %>% group_by(State) %>% summarize(n())
+```
+
+#Part 3
+
+```{r}
+offBio <- inner_join(offClean, bioClean, by="Name")
+print(tbl_df(offBio), n=5)
+```
+
+There does seem to be a bit of a relationship with weight and receiving yards. Lighter players get a decent amount of receiving yards but when weight hits 225 it really skyrockets. If we exclude the 225 weight group then there is a negative relationship between weight and receiving yards.
+
+```{r}
+ggplot(offBio, aes(x=Weight, y=Receiving_YDS)) + geom_point() + labs(Title="Receiving Yards by Weight", x="Weight", y="Receiving Yards")
+```
+
