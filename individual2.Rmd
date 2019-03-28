@@ -1,0 +1,93 @@
+---
+title: "ds202 lab 4"
+author: "Connor Hergenreter"
+date: "March 27, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Importing and Setting up Data
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(readxl)
+library(ggplot2)
+defense <- read_excel('cyclonesFootball2018.xlsx', sheet='Defensive')
+str(defense)
+offensive <- read_excel('cyclonesFootball2018.xlsx', sheet='Offensive')
+str(offensive)
+biography <- read_excel('cyclonesFootball2018.xlsx', sheet='Biography')
+str(biography)
+```
+
+#Part 1
+
+```{r}
+head(defense)
+cols <- c("Name", "Opponent_Opponent")
+colsdef <- c("Tackles_Solo", "Tackles_ASST", "Tackles_TFL", "Tackles_Sack", "Turnover_FF", "Turnover_FR", "Turnover_INT", "Pass_QBH", "Pass_PB")
+colsoff <- c("Receiving_REC", "Receiving_YDS", "Receiving_TD", "Rushing_ATT", "Rushing_YDS", "Rushing_TD", "Passing_CMP-ATT", "Passing_YDS", "Passing_TD", "Passing_INT")
+defense %>% mutate_at(cols, as.factor)
+defClean <- defense %>% mutate_at(colsdef, as.numeric)
+offensive %>% mutate_at(cols, as.factor)
+offClean <- offensive %>% mutate_at(colsoff, as.numeric)
+bioClean <- biography %>% mutate_at("Weight", as.numeric)
+print(tbl_df(defClean), n=5)
+print(tbl_df(offClean), n=5)
+print(tbl_df(bioClean), n=5)
+```
+
+#Part 2
+
+#Problem 1-2
+
+Everything looks rare relative to Tackles_ASST and Tackles_Solo. Pass_QBH, Pass_PF, Tackles_Sack, and Tackles_TFL max out at three and all look pretty rare. The rarest three are the Turnover_FF, Turnover_FR, and Turnover_INT. Those three only have players getting one per game if any.
+
+```{r}
+defTid <- defClean %>% gather(key=Statistic, value=Count, 3:11)
+
+ggplot(defTid, aes(x=Count)) + geom_histogram(binwidth=1) + facet_wrap(~Statistic) + scale_x_continuous(breaks=seq(0,10,1)) + labs(title="Defensive Statistic Counts", x="Player Max", y="Count")
+```
+
+#Problem 3
+
+Based off this scatterplot it appears that the Iowa State players did better tackle-wise against West Virgina. Too many players got no tackles against Kansas State for this to be much of a competition
+
+```{r}
+wvks <- defClean %>% filter(Opponent_Opponent=="West Virginia" | Opponent_Opponent=="Kansas State") %>% select(Name, Opponent_Opponent, Tackles_Solo) %>% spread(Opponent_Opponent, Tackles_Solo) %>% mutate_all(funs(replace(., is.na(.), 0)))
+
+print(tbl_df(wvks), n=500)
+
+ggplot(wvks, aes(x=`West Virginia`, y=`Kansas State`)) + geom_point() + scale_y_continuous(breaks=seq(0,9,1)) + labs(title="Player Tackle Counts Against Kansas State and West Virginia", x="West Virginia", y="Kansas State")
+```
+
+#Part 2 of Part 2
+
+```{r}
+bioSep <- bioClean %>% separate(Hometown, c("Town", "State"), sep=",") %>% group_by(State) %>% summarize(n())
+```
+
+#Part 3
+
+```{r}
+offBio <- inner_join(offClean, bioClean, by="Name")
+print(tbl_df(offBio), n=5)
+```
+
+There does seem to be a bit of a relationship with weight and receiving yards. Lighter players get a decent amount of receiving yards but when weight hits 225 it really skyrockets. If we exclude the 225 weight group then there is a negative relationship between weight and receiving yards.
+
+```{r}
+ggplot(offBio, aes(x=Weight, y=Receiving_YDS)) + geom_point() + labs(Title="Receiving Yards by Weight", x="Weight", y="Receiving Yards")
+```
+
+Something I wanted to check out was the tackles by weight. Using the scatterplot below it appears that the lighter defense players seem to pull in more tackles than the heavier ones. This shows another negative relationship with tackles by weight.
+
+```{r}
+defBio <- inner_join(defClean, bioClean, by="Name")
+
+ggplot(defBio, aes(x=Weight, y=Tackles_Solo)) + geom_point() + labs(Title="Solo Tackles by Weight", x="Weight", y="Solo Tackles")
+```
