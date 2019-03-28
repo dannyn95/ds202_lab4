@@ -1,0 +1,121 @@
+---
+title: "individual"
+author: "Danny Nguyen"
+date: "March 26, 2019"
+output: html_document
+---
+
+```{r setup}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#original code kept resulting in Error: `path` does not exist: 'cyclonesFootball2018.xlsx'
+#altered code to follow path in order to run successfully.
+library(readxl)
+defense <- read_excel("C:/Users/Danny Nguyen/ds202_lab4/cyclonesFootball2018.xlsx", sheet='Defensive')
+offense <- read_excel("C:/Users/Danny Nguyen/ds202_lab4/cyclonesFootball2018.xlsx", sheet='Offensive')
+biography <- read_excel("C:/Users/Danny Nguyen/ds202_lab4/cyclonesFootball2018.xlsx", sheet='Biography')
+```
+
+
+#Part One: Cleaning data 
+#Question 1: The player names and opponent names are factors.
+```{r}
+defense <- defense %>% 
+  mutate(Name = as.factor(Name),
+         Opponent_Opponent = as.factor(Opponent_Opponent)) 
+str(defense)
+
+offense <- offense %>%
+  mutate(Name = as.factor(Name),
+         Opponent_Opponent = as.factor(Opponent_Opponent)) 
+str(offense)
+
+biography <- biography %>% 
+  mutate(Name = as.factor(Name))
+str(biography)
+```
+
+
+#Question 2: All offensive and defensive statistics are numerical. The Weight column in biogrpahy is also numeric.
+```{r}
+defense <- mutate_at(defense, vars(Tackles_Solo, Tackles_ASST, Tackles_TFL, Tackles_Sack, Turnover_FF, Turnover_FR, Turnover_INT, Pass_QBH, Pass_PB), as.numeric)
+str(defense)
+
+offense <- mutate_at(offense, vars(Receiving_REC, Receiving_YDS, Receiving_TD, Rushing_ATT, Rushing_YDS, Rushing_TD, `Passing_CMP-ATT`, Passing_YDS, Passing_TD, Passing_INT), as.numeric)
+str(offense)
+
+biography <- biography %>% 
+  mutate(Weight = as.numeric(Weight))
+str(biography)
+```
+
+
+#Question 3: Bonus: Change the Height column in biogrpahy into numeric.
+```{r}
+biography <- biography %>%
+  mutate(Height = as.numeric(Height), na.rm = TRUE)
+str(biography)
+
+#Create and print defClean, offClean, and bioClean
+defClean <- defense
+offClean <- offense
+bioClean <- biography
+
+print(defClean)
+print(offClean)
+print(bioClean)
+```
+
+
+#Part Two: Tidying data (1)
+#Question 1: Reformat the defClean data frame into a tidy format using gather. The type of statistic (Tackles_Solo, Tackles_ASST, etc) is added as a new key column named Statistic.
+```{r}
+defCleanTid <- defClean %>% gather(key = Statistic, value = Count, 3:11)
+```
+
+#Question 2: Create a histogram for each defensive statistic. Use facet_wrap to draw all histograms in a single plot. What defensive skills are rare?
+Everything appears to be rare relative to Tackle_Solo and Tackle_ASST. However, Turnover_FF, Turnover_FR, and Turnover_INT appear to be the rarest. Each of these three have players that get maybe one per game.
+```{r}
+ggplot(defCleanTid, aes(x = Count)) + geom_histogram(binwidth = 1) + facet_wrap(~Statistic) + scale_x_continuous(breaks = seq(0, 10, 1)) + labs(title = "Defensive Statistic Counts", x = "Player Max", y = "Count")
+```
+
+#Question 3: Did ISU have better defense against West Virginia or Kansas State? Answer this question by creating a scatterplot with x-axis being the number of solo tackles (by each player) against West Virginia, and y-axis being that against Kansas State. A large number of solo tackles indicates good defense.
+It does seem like that ISU did well in terms of solo tackles against West Virginia. Against Kansas State, not so much as there were too few tackles against Kansas State.
+```{r}
+WVKS <- defClean %>% filter(Opponent_Opponent == "West Virginia" | Opponent_Opponent == "Kansas State") %>% select(Name, Opponent_Opponent, Tackles_Solo) %>% spread(Opponent_Opponent, Tackles_Solo) %>% mutate_all(funs(replace(., is.na(.), 0)))
+
+print(tbl_df(WVKS), n = 500)
+
+ggplot(WVKS, aes(x = `West Virginia`, y = `Kansas State`)) + geom_point() + scale_y_continuous(breaks = seq(0,9,1)) + labs(title = "Player Tackle Counts Against Kansas State and West Virginia", x = "West Virginia", y = "Kansas State")
+```
+
+#Part Two: Tidying data(2)
+```{r}
+bioSeper <- bioClean %>% separate(Hometown, c("Town", "State"), sep = ",") %>% group_by(State) %>% summarize(n())
+
+#the number of players from each state.
+print(bioSeper)
+```
+
+#Part Three: Joining data frames
+#Question 1: Find where do the offensive players come from by joining the offensive data and player biography data appropriately.
+```{r}
+offBio <- inner_join(offClean, bioClean, by = "Name")
+print(tbl_df(offBio), n = 5) 
+```
+
+#Question 2: Is there a relationship between the weight of a player and the receiving yards (Receiving_YDS)?
+From what I can tell, it seems like there is a relationship between weight and receiving yards, but for some reason the receiving yards for the weight of 225 goes up immensely. If we were to exclude the weight of 225 then the plot appears to show a somewhat negative relationship. 
+```{r}
+ggplot(offBio, aes(x = Weight, y = Receiving_YDS)) + geom_point() + labs(Title = "Receiving Yards by Weight", x = "Weight", y = "Receiving Yards")
+```
+
+#Question 3: Explore more. Raise a question that can be answered only by looking at two or more data frames. Then answer that question.
+For this I wanted to see the potential relationship of assist tackles by weight. After creating the plot it seems that the lower the weight the greater the number of assist tackles, and the plot appears to indicate a slightly negative relationship.
+```{r}
+BioDef <- inner_join(defClean, bioClean, by = "Name")
+
+ggplot(BioDef, aes(x = Weight, y = Tackles_ASST)) + geom_point() + labs(Title = "Assist Tackles by Weight", x = "Weight", y = "Assist Tackles")
+```
