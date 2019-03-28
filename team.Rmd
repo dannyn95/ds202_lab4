@@ -6,4 +6,67 @@ output: html_document
 ---
 
 ```{r setup}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#original code kept resulting in Error: `path` does not exist: 'cyclonesFootball2018.xlsx'
+#altered code to follow path in order to run successfully.
+library(readxl)
+defense <- read_excel("C:/Users/Danny Nguyen/ds202_lab4/cyclonesFootball2018.xlsx", sheet='Defensive')
+offense <- read_excel("C:/Users/Danny Nguyen/ds202_lab4/cyclonesFootball2018.xlsx", sheet='Offensive')
+biography <- read_excel("C:/Users/Danny Nguyen/ds202_lab4/cyclonesFootball2018.xlsx", sheet='Biography')
+```
+
+```{r}
+#Part One: Cleaning data 
+#Question 1: The player names and opponent names are factors.
+defense <- defense %>% 
+  mutate(Name = as.factor(Name),
+         Opponent_Opponent = as.factor(Opponent_Opponent)) 
+str(defense)
+
+offense <- offense %>%
+  mutate(Name = as.factor(Name),
+         Opponent_Opponent = as.factor(Opponent_Opponent)) 
+str(offense)
+
+biography <- biography %>% 
+  mutate(Name = as.factor(Name))
+str(biography)
+```
+
+```{r}
+#Question 2: All offensive and defensive statistics are numerical. The Weight column in biogrpahy is also numeric.
+defense <- mutate_at(defense, vars(Tackles_Solo, Tackles_ASST, Tackles_TFL, Tackles_Sack, Turnover_FF, Turnover_FR, Turnover_INT, Pass_QBH, Pass_PB), as.numeric)
+str(defense)
+
+offense <- mutate_at(offense, vars(Receiving_REC, Receiving_YDS, Receiving_TD, Rushing_ATT, Rushing_YDS, Rushing_TD, `Passing_CMP-ATT`, Passing_YDS, Passing_TD, Passing_INT), as.numeric)
+str(offense)
+
+biography <- biography %>% 
+  mutate(Weight = as.numeric(Weight))
+str(biography)
+```
+
+```{r}
+#Question 3: Bonus: Change the Height column in biogrpahy into numeric.
+biography <- biography %>%
+  mutate(Height = as.numeric(Height), na.rm = TRUE)
+str(biography)
+
+#Create and print defClean, offClean, and bioClean
+defClean <- defense
+offClean <- offense
+bioClean <- biography
+
+print(defClean)
+print(offClean)
+print(bioClean)
+```
+
+```{r}
+#Part Two: Tidying data (1)
+#Question 1: Reformat the defClean data frame into a tidy format using gather. The type of statistic (Tackles_Solo, Tackles_ASST, etc) is added as a new key column named Statistic.
+defClean <- defClean %>% gather(key = Statistic, value = Count, 3:11) %>% str
 ```
